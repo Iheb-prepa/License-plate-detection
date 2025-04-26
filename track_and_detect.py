@@ -105,6 +105,7 @@ def correction_british(detected_text, CHAR_TO_INT_DICT, INT_TO_CHAR_DICT):
     
     return corrected_text
 
+
 def correction_license_plate_country(country, detected_text, CHAR_TO_INT_DICT, INT_TO_CHAR_DICT, logs):
     if country == 'eng':
         return correction_british(detected_text, CHAR_TO_INT_DICT, INT_TO_CHAR_DICT)
@@ -166,8 +167,6 @@ def generate_corrected_csv(YAML_FILE_PATH, csv_output_path):
     print("Opening yaml file")
     with open(YAML_FILE_PATH, "r") as file:
         data = yaml.safe_load(file)
-    # print(data)
-    # print("\n ############################## \n")
     # Extract the most occurring (most likely) license plate value for each detected license plate
     license_plate_ids_dict = postprocess_results.correct_all_license_plates(data)
     print(license_plate_ids_dict)
@@ -259,8 +258,7 @@ def main(VIDEO_NAME, country):
 
     # Define the codec and create VideoWriter object to save the result
     fourcc = cv2.VideoWriter_fourcc(*CODEC)  # Codec
-    # out = cv2.VideoWriter(f"INTERMEDIATE_VIDEO_{VIDEO_NAME}.mp4", fourcc, fps, (frame_width, frame_height))
-    out = cv2.VideoWriter('test_output_video_6.mp4', cv2.VideoWriter_fourcc(*'avc1'), fps, (frame_width, frame_height))
+    out = cv2.VideoWriter(f"INTERMEDIATE_VIDEO_{VIDEO_NAME}.mp4", cv2.VideoWriter_fourcc(*'avc1'), fps, (frame_width, frame_height))
 
 
     # Font and bounding box settings
@@ -273,11 +271,7 @@ def main(VIDEO_NAME, country):
 
     # Initialize the csv file
     csv_output_path = f'detections_{VIDEO_NAME}.csv'
-    # csv_file = open(csv_output_path, mode='w', newline='')
-    # csv_writer = csv.writer(csv_file)
-    # CSV_HEADER = ['frame_number', 'object_id', 'car_bbox', 'lp_bbox', 'lp_confidence']
     CSV_HEADER = ['frame_number', 'car_id', 'car_bbox', 'lp_id', 'lp_bbox', 'lp_confidence']
-    # csv_writer.writerow(CSV_HEADER) 
     
 
     frame_number = 1
@@ -302,8 +296,10 @@ def main(VIDEO_NAME, country):
                 detections.append([x1, y1, x2, y2, conf])  # Add detection with CPU-based data
 
         # Update SORT tracker with detections
-        if detections:
-            detections = np.array(detections)  # Convert to NumPy array if not empty
+        # if detections:
+        #     detections = np.array(detections)  # Convert to NumPy array if not empty
+        detections = np.array(detections) if detections else np.empty((0, 5))
+        print(detections)
         tracked_objects = tracker.update(detections)
 
         car_id_and_coordinates = {}
@@ -346,18 +342,10 @@ def main(VIDEO_NAME, country):
                         a = 0
                         for (ocr_bbox, lp_id, confidence) in ocr_result:
                             a+=1
-                            # print("ITERATING ===========", a)
-                            # lp_id = correction_british(lp_id, CHAR_TO_INT_DICT, INT_TO_CHAR_DICT)
                             lp_id = correction_license_plate_country(country, lp_id, CHAR_TO_INT_DICT, INT_TO_CHAR_DICT, logs)
                             if lp_id is None:
                                 continue
-                            # print(f"OCR Text: {lp_id} (Confidence: {confidence:.2f})")
                             cv2.putText(frame, lp_id, (lp_x1, lp_y2 + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-
-                            # lp_bbox = lp_x1, lp_y1, lp_x2, lp_y2
-                            # car_id = find_car_id(lp_bbox, car_id_and_coordinates)
-
-                            #print("CAAAAAAAAR IDDDDDDD: ", car_id)
                             # car_id is a dict[dict], {car_id: {lp_id_1:occurences_lp1, lp_id_2: occurences_lp2},... } 
                             # A car should have one license plate number but the ocr may give different readings depending on the frame for the 
                             # same object, so we construct this dictionary and use it later to correct the readings.
@@ -378,6 +366,7 @@ def main(VIDEO_NAME, country):
                 
         # Write the frame to the output video file
         out.write(frame)
+        print("treated frame: ", frame_number)
         frame_number += 1
 
     # Release resources
@@ -402,11 +391,12 @@ def main(VIDEO_NAME, country):
     
 
 if __name__ == '__main__':
-    VIDEO_NAME = 'test5'
+    VIDEO_NAME = 'test7-bis'
+
 
     if VIDEO_NAME == 'test1':
         country = 'eng'
-    elif VIDEO_NAME == 'test5' or VIDEO_NAME == 'test6':
+    elif VIDEO_NAME == 'test5' or VIDEO_NAME == 'test6' or VIDEO_NAME == 'test7' or VIDEO_NAME == 'test7-bis':
         country = 'fr'
     else:
         print("EXITING: please select a country for the license plates.")
