@@ -12,11 +12,11 @@ from paddleocr import PaddleOCR
 
 
 
-def resize_cropped_image(cropped_image, scale_factor=2.0):
-    # Resize the image using the specified scale factor
-    new_width = int(cropped_image.shape[1] * scale_factor)
-    new_height = int(cropped_image.shape[0] * scale_factor)
-    return cv2.resize(cropped_image, (new_width, new_height))
+# def resize_cropped_image(cropped_image, scale_factor=2.0):
+#     # Resize the image using the specified scale factor
+#     new_width = int(cropped_image.shape[1] * scale_factor)
+#     new_height = int(cropped_image.shape[0] * scale_factor)
+#     return cv2.resize(cropped_image, (new_width, new_height))
 
 
 def is_valid_fr(corrected_text):
@@ -136,6 +136,32 @@ def is_contained(bbox1, bbox2):
             y1_2 <= y2_1 <= y2_2)
 
 
+def zoom_on_cropped_lp(frame, cropped_region, lp_x1, lp_x2, lp_y1, lp_y2):
+    scale_factor = 1.5
+    zoomed_region = cv2.resize(
+        cropped_region, 
+        None, 
+        fx=scale_factor, 
+        fy=scale_factor, 
+        interpolation=cv2.INTER_LINEAR
+    )
+
+    zoom_h, zoom_w = zoomed_region.shape[:2]
+
+    center_x = (lp_x1 + lp_x2) // 2
+    center_y = (lp_y1 + lp_y2) // 2
+
+    new_x1 = max(0, center_x - zoom_w // 2)
+    new_y1 = max(0, center_y - zoom_h // 2)
+    new_x2 = min(frame.shape[1], new_x1 + zoom_w)
+    new_y2 = min(frame.shape[0], new_y1 + zoom_h)
+
+    # Adjust zoomed_region if it goes out of bounds
+    zoomed_region = zoomed_region[:new_y2 - new_y1, :new_x2 - new_x1]
+    
+    return zoomed_region, new_x1, new_y1, new_x2, new_y2
+
+
 def find_car_id(lp_coordinates, car_id_and_coordinates):
     """
     For a given license plate (lp_coordiantes), find the corresponding car (car_id) 
@@ -240,7 +266,9 @@ def main(VIDEO_NAME, country):
     # Load YOLOv8 model
     model = YOLO('yolov8s.pt')  # Replace 'yolov8s.pt' with your specific YOLOv8 model if needed
 
-    license_plate_model = YOLO("runs/detect/train4/weights/best.pt")
+    # license_plate_model = YOLO("runs/detect/train4/weights/best.pt")
+    license_plate_model = YOLO("license_plate_detector.pt")
+
 
     # Define vehicle classes based on YOLO model
     VEHICLE_CLASSES = ['car', 'truck', 'bus', 'motorcycle']
@@ -267,8 +295,8 @@ def main(VIDEO_NAME, country):
 
     # Font and bounding box settings
     FONT_SCALE = 1.5
-    BOX_THICKNESS = 10
-    TEXT_THICKNESS = 5
+    CAR_BOX_THICKNESS = 5
+    CAR_ID_TEXT_THICKNESS = 5
 
     car_and_lp = {}
     csv_data = {}
@@ -311,10 +339,10 @@ def main(VIDEO_NAME, country):
         # Draw bounding boxes and IDs
         for x1, y1, x2, y2, track_id in tracked_objects:
             x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))  # Ensure coordinates are integers
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), BOX_THICKNESS)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), CAR_BOX_THICKNESS)
             cv2.putText(frame, f'ID {int(track_id)}', (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (255, 0, 0), TEXT_THICKNESS)
-            car_id_and_coordinates[int(track_id)] = (x1, y1, x2, y2)
+                        cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, (255, 0, 0), CAR_ID_TEXT_THICKNESS)
+            car_id_and_coordinates[int(track_id)] = (x1, y1, x2, y2) # Putting the car ID on the corresponding car bbox
 
             bbox = [x1, y1, x2, y2]
             # csv_writer.writerow([frame_number, int(track_id), str(bbox), '', '', ''])
@@ -326,12 +354,15 @@ def main(VIDEO_NAME, country):
             for box in lp_result.boxes:
                 lp_x1, lp_y1, lp_x2, lp_y2 = map(int, box.xyxy[0])  # Get box coordinates
                 label = license_plate_model.names[int(box.cls)]
-                cv2.rectangle(frame, (lp_x1, lp_y1), (lp_x2, lp_y2), (0, 255, 0), 2)
-                cv2.putText(frame, label, (lp_x1, lp_y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                # cv2.rectangle(frame, (lp_x1, lp_y1), (lp_x2, lp_y2), (0, 255, 0), 2)
+                # cv2.putText(frame, label, (lp_x1, lp_y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                 # Check if coordinates are within the frame dimensions
                 if lp_x1 >= 0 and lp_y1 >= 0 and lp_x2 <= frame.shape[1] and lp_y2 <= frame.shape[0]:
                     # Crop the detected region and run OCR
                     cropped_region = frame[lp_y1:lp_y2, lp_x1:lp_x2]
+
+                    zoomed_region, new_x1, new_y1, new_x2, new_y2 = zoom_on_cropped_lp(frame, cropped_region, lp_x1, lp_x2, lp_y1, lp_y2)
+                    frame[new_y1:new_y2, new_x1:new_x2] = zoomed_region
                     
                     lp_crop_gray = cv2.cvtColor(cropped_region, cv2.COLOR_BGR2GRAY)
                     _, lp_crop_threshold = cv2.threshold(lp_crop_gray, 64, 255, cv2.THRESH_BINARY_INV)
@@ -341,13 +372,6 @@ def main(VIDEO_NAME, country):
                     update_lp_data(csv_data, frame_number, car_id, '', [lp_bbox], '')
 
                     if lp_crop_threshold.size > 0:  # Ensure the cropped region is not empty                        
-                        # lp_crop_threshold_rgb = cv2.cvtColor(lp_crop_threshold, cv2.COLOR_GRAY2BGR)
-
-                        # cv2.imshow('Cropped License Plate rgb', lp_crop_threshold_rgb)
-                        # cv2.waitKey(0)
-                        # cv2.destroyAllWindows() 
-
-                        # ocr_result = reader.readtext(lp_crop_threshold_rgb)
 
                         paddle_result = paddle_ocr_reader.ocr(cropped_region, cls=True)
 
@@ -362,7 +386,7 @@ def main(VIDEO_NAME, country):
                                 lp_id = correction_license_plate_country(country, lp_id, CHAR_TO_INT_DICT, INT_TO_CHAR_DICT, logs)
                                 if lp_id is None:
                                     continue
-                                cv2.putText(frame, lp_id, (lp_x1, lp_y2 + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+                                # cv2.putText(frame, lp_id, (lp_x1, lp_y2 + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
                                 # car_id is a dict[dict], {car_id: {lp_id_1:occurences_lp1, lp_id_2: occurences_lp2},... } 
                                 # A car should have one license plate number but the ocr may give different readings depending on the frame for the 
                                 # same object, so we construct this dictionary and use it later to correct the readings.
@@ -404,11 +428,11 @@ def main(VIDEO_NAME, country):
     generate_corrected_csv(YAML_FILE_PATH, csv_output_path)
 
     construct_final_video.main(csv_output_path, VIDEO_PATH, OUTPUT_VIDEO_PATH)
-    print(logs)
+    # print(logs)
     
 
 if __name__ == '__main__':
-    VIDEO_NAME = 'test7'
+    VIDEO_NAME = 'test8'
 
 
     if VIDEO_NAME == 'test1':

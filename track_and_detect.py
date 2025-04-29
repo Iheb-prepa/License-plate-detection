@@ -336,8 +336,14 @@ def main(VIDEO_NAME, country):
                     car_id = find_car_id(lp_bbox, car_id_and_coordinates)
                     update_lp_data(csv_data, frame_number, car_id, '', [lp_bbox], '')
 
-                    if lp_crop_threshold.size > 0:  # Ensure the cropped region is not empty
-                        ocr_result = reader.readtext(lp_crop_threshold)
+                    if lp_crop_threshold.size > 0:  # Ensure the cropped region is not empty                        
+                        lp_crop_threshold_rgb = cv2.cvtColor(lp_crop_threshold, cv2.COLOR_GRAY2BGR)
+
+                        # cv2.imshow('Cropped License Plate rgb', lp_crop_threshold_rgb)
+                        # cv2.waitKey(0)
+                        # cv2.destroyAllWindows() 
+
+                        ocr_result = reader.readtext(lp_crop_threshold_rgb)
                         # Display OCR results on the frame
                         a = 0
                         for (ocr_bbox, lp_id, confidence) in ocr_result:
@@ -391,13 +397,14 @@ def main(VIDEO_NAME, country):
     
 
 if __name__ == '__main__':
-    VIDEO_NAME = 'test7-bis'
+    VIDEO_NAME = 'test8-rgb-crop'
 
 
     if VIDEO_NAME == 'test1':
         country = 'eng'
-    elif VIDEO_NAME == 'test5' or VIDEO_NAME == 'test6' or VIDEO_NAME == 'test7' or VIDEO_NAME == 'test7-bis':
+    elif VIDEO_NAME == 'test5' or VIDEO_NAME == 'test6' or VIDEO_NAME == 'test7' or VIDEO_NAME == 'test7-bis' or VIDEO_NAME == 'test8' or VIDEO_NAME == 'test8-rgb-crop':
         country = 'fr'
     else:
         print("EXITING: please select a country for the license plates.")
+        exit(1)
     main(VIDEO_NAME, country)

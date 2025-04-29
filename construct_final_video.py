@@ -21,12 +21,39 @@ def interpolate_bboxes(prev_bbox, next_bbox, frame_number, prev_frame, next_fram
     return [x1, y1, x2, y2]
 
 
+def zoom_on_cropped_lp(frame, lp_x1, lp_x2, lp_y1, lp_y2):
+    scale_factor = 1.5
+    cropped_region = frame[lp_y1:lp_y2, lp_x1:lp_x2]
+    zoomed_region = cv2.resize(
+        cropped_region, 
+        None, 
+        fx=scale_factor, 
+        fy=scale_factor, 
+        interpolation=cv2.INTER_LINEAR
+    )
+
+    zoom_h, zoom_w = zoomed_region.shape[:2]
+
+    center_x = (lp_x1 + lp_x2) // 2
+    center_y = (lp_y1 + lp_y2) // 2
+
+    new_x1 = max(0, center_x - zoom_w // 2)
+    new_y1 = max(0, center_y - zoom_h // 2)
+    new_x2 = min(frame.shape[1], new_x1 + zoom_w)
+    new_y2 = min(frame.shape[0], new_y1 + zoom_h)
+
+    # Adjust zoomed_region if it goes out of bounds
+    zoomed_region = zoomed_region[:new_y2 - new_y1, :new_x2 - new_x1]
+    
+    return zoomed_region, new_x1, new_y1, new_x2, new_y2
+
+
 def main(csv_path, video_path, output_video_path):
 
     # Parameters for drawing
     car_color = (255, 0, 0)  # Blue for car bounding boxes
     lp_color = (0, 255, 0)   # Green for license plate bounding boxes
-    box_thickness = 10
+    CAR_BOX_THICKNESS = 5
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 1.5
     font_thickness = 5
@@ -112,16 +139,19 @@ def main(csv_path, video_path, output_video_path):
                 car_bbox = detection['car_bbox']
                 # print("GOT CAR BBOX", car_bbox)
                 x1, y1, x2, y2 = map(int, car_bbox)
-                cv2.rectangle(frame, (x1, y1), (x2, y2), car_color, box_thickness)
+                cv2.rectangle(frame, (x1, y1), (x2, y2), car_color, CAR_BOX_THICKNESS)
                 cv2.putText(frame, f"ID {int(detection['car_id'])}", (x1, y1 - 10), font, font_scale, car_color, font_thickness)
 
                 # Draw license plate bounding box (if available)
                 lp_bbox = detection['lp_bbox']
                 if lp_bbox:
                     # print("GOT BBOX", lp_bbox)
-                    x1, y1, x2, y2 = map(int, list(lp_bbox[0]))
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), lp_color, box_thickness)
-                    cv2.putText(frame, f"{detection['lp_id']}", (x1, y1 - 10), font, lp_font_scale, lp_color, lp_font_thickness)
+                    lp_x1, lp_y1, lp_x2, lp_y2 = map(int, list(lp_bbox[0]))
+                    zoomed_region, new_x1, new_y1, new_x2, new_y2 = zoom_on_cropped_lp(frame, lp_x1, lp_x2, lp_y1, lp_y2)
+                    frame[new_y1:new_y2, new_x1:new_x2] = zoomed_region
+                    cv2.rectangle(frame, (new_x1, new_y1), (new_x2-1, new_y2-1), lp_color, 3)
+                    # cv2.putText(frame, f"{detection['lp_id']}", (lp_x1, lp_y1 - 10), font, lp_font_scale, lp_color, lp_font_thickness)
+                    cv2.putText(frame, f"{detection['lp_id']}", (new_x1, new_y1 - 10), font, lp_font_scale, lp_color, lp_font_thickness)
                     # prev_lp_bbox = lp_bbox
                     # prev_frame = frame_number
                 # else:
