@@ -4,13 +4,14 @@ This project is a complete pipeline for detecting vehicles and license plates in
 
 It combines state-of-the-art models and tracking algorithms:
 
-YOLOv8 for object detection (vehicles and license plates)
+-Two YOLOv8 models for object detection: one for detecting vehicles (pretrained) and the other is for license plates detection (fine-tuned on images of license plates).
 
-PaddleOCR for text recognition
+-PaddleOCR for text recognition.
 
-SORT for object tracking
+-SORT for object tracking.
 
 # 📹 Example Output
+[![Demo Video](https://img.youtube.com/vi/PwBZghOF5JkD/0.jpg)](https://www.youtube.com/watch?v=PwBZghOF5Jk)
 
 
 # 🔧 Installation
@@ -66,4 +67,6 @@ python src/main.py
 -You can change the confidence level for detecting license plates by changing license_plate_model.predict() argument. Increasing the confidence would result in less but more accurate detections, decreasing the confidence would result in more license plates detections but also more false positives (i.e. other objects detected as license plates). 
 
 -If you get an FFMPEG error when launching the program and at the end of the execution (the error won't stop the execution), consider reinstalling opencv with conda-forge
+
+-This is an offline solution not a real-time one.
 
