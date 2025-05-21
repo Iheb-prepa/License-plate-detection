@@ -21,7 +21,6 @@ def generate_corrected_csv(YAML_FILE_PATH: "Path", csv_output_path: "Path") -> N
 
     # Extract the most occurring (most likely) license plate value for each detected license plate
     license_plate_ids_dict = postprocess_results.correct_all_license_plates(data)
-    # print(license_plate_ids_dict)
 
     # correct the csv file
     with open(csv_output_path, mode='r', newline='') as input_file:
@@ -32,7 +31,6 @@ def generate_corrected_csv(YAML_FILE_PATH: "Path", csv_output_path: "Path") -> N
     for row in rows:
         car_id = int(row['car_id'])  # Ensure car_id is an integer
         if car_id in license_plate_ids_dict:
-            # print("YES SIR")
             row['lp_id'] = license_plate_ids_dict[car_id]  # Update lp_id
 
     # Overwrite the existing CSV

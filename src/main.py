@@ -267,7 +267,7 @@ def main(VIDEO_PATH: "Path", country='fr') -> "Path":
     
 
 if __name__ == '__main__':
-    VIDEO_NAME = 'test7'
+    VIDEO_NAME = 'test8'
     
     BASE_DIR = Path(__file__).resolve().parent.parent  # Go up to the project root
     VIDEO_PATH = BASE_DIR / "test_videos" / f"{VIDEO_NAME}.mp4"
