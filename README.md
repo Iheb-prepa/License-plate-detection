@@ -11,7 +11,10 @@ It combines state-of-the-art models and tracking algorithms:
 -SORT for object tracking.
 
 # 📹 Example Output
-[![Demo Video](https://img.youtube.com/vi/PwBZghOF5JkD/0.jpg)](https://www.youtube.com/watch?v=PwBZghOF5Jk)
+
+Click on the image to watch the demo on YouTube
+
+[![Demo Video](https://img.youtube.com/vi/PwBZghOF5Jk/hqdefault.jpg)](https://www.youtube.com/watch?v=PwBZghOF5Jk)
 
 
 # 🔧 Installation
